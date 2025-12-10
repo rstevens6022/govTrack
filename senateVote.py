@@ -12,6 +12,7 @@ class senateVote:
 		self.yeas = yeas
 		self.nays = nays
 		self.title = title
+		self.members = []
 
 	def __str__ (self):
 		return (str(self.congress) + "," + 
