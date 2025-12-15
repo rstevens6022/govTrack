@@ -16,6 +16,7 @@ def tests(useLocal):
 	print("----getting latest_vote-----")
 	print(senateTest.latest_vote())
 
+
 # ------------------------------------------
 # Testing basic stuff
 # senateTest = senate.senate(119, 1, True)
@@ -35,12 +36,15 @@ def tests(useLocal):
 
 # ------------------------------------------
 #Testing 
-# senateTest = senate.senate(119, 1, False)
+# senateTest = senate.senate(119, 1, True)
+# senateTest.clearLog()
+
+
 # senateTest.pullVoteList()
 # print(senateTest.latest_vote())
 # senateTest.saveVoteList()
 
-# print("------Pulling latest vote-------")
+print("------Pulling latest vote-------")
 
 # print(senateTest.pullVote(senateTest.latest_vote()))
 # print(senateTest.pullLatestVote())
@@ -49,4 +53,24 @@ def tests(useLocal):
 # ------------------------------------------
 # test xml parsing
 senateTest = senate.senate(119,1,True)
+senateTest.clearLog()
+
+senateTest.log("-----------parse_VoteList-------------")
 senateTest.parse_voteList()
+senateTest.log("-----------parseVote-------------")
+senateTest.parseVote()
+senateTest.log("-----------LOOP-------------")
+for vote in senateTest.voteList:
+	# senateTest.log(vote.vote_number)
+	if vote.vote_number == '00627':
+		senateTest.log("-----------Vote 00627-------------")
+		senateTest.log(vote)
+		senateTest.log("-----------Vote 00627 Question-------------")
+		print("-----------Vote 00627 Question-------------")
+		senateTest.log(vote.question)
+		senateTest.log("-----------printMembers-------------")
+		print("-----------printMembers-------------")
+		senateTest.log(vote.printMembers())
+		senateTest.log("-----------print members[]-------------")
+		senateTest.log(str(vote.members))
+		

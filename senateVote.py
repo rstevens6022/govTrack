@@ -1,4 +1,4 @@
-
+import member
 class senateVote:
 	def __init__ (self,congress, session, vote_number, vote_date, issue, question, result, yeas, nays, title):
 		self.congress = congress
@@ -12,6 +12,8 @@ class senateVote:
 		self.yeas = yeas
 		self.nays = nays
 		self.title = title
+		self.present = None
+		self.absent = None
 		self.members = []
 
 	def __str__ (self):
@@ -26,3 +28,10 @@ class senateVote:
 			str(self.yeas) + "," + 
 			str(self.nays) + "," + 
 			str(self.title))
+	
+	def addMember(self, fName, lName, party, state, chamber, id, vote):
+		self.members.append(member.member(fName, lName, party, state, chamber, id, vote))
+
+	def printMembers(self):
+		for member in self.members:
+			print(member)

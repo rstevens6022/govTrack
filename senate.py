@@ -2,6 +2,8 @@ import requests
 import re
 import xml.etree.ElementTree as ET
 import senateVote
+from time import sleep
+from datetime import datetime
 
 class senate:
 	def __init__(self, congressNum, congressSession, useLocal):
@@ -15,16 +17,31 @@ class senate:
 		self.senateVoteSummaryTree = None
 		self.voteList = []
 
+	def clearLog(self):
+		open("logFile.txt", "w")
+		self.log("New Log File")
+
+
+	def log(self,text):
+		# with open("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml", "w") as f:
+		# 			f.write(self.senateVoteSummary)
+		with open("logFile.txt", "a") as f:
+					f.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S') + " :: " + str(text) + '\n')
+
+
 	def get_url(self):
 		return self.senate_votes_url
 
 	def pullVoteList(self):
+		# downloads and stores votelist .xml 
 		if self.useLocal == True:
 			try:
 				self.senateVoteSummary = open("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml").read()
 			except FileNotFoundError:
 				print("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml" + " not found")
+				self.log("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml" + " not found")
 				print("set useLocal to \"False\" to download.")
+				self.log("set useLocal to \"False\" to download.")
 		else:
 			response = requests.get(self.senate_votes_url)
 			self.senateVoteSummary = response.text
@@ -38,17 +55,23 @@ class senate:
 					f.write(self.senateVoteSummary)
 
 	def pullVote(self,voteNum):
+		# downloads and returns individual vote xml. 
 		if self.useLocal == True:
 			try:
 				vote = open("senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml").read()
+				return vote
 			except FileNotFoundError:
 				print("senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml" + " not found")
+				self.log("senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml" + " not found")
 				print("set useLocal to \"False\" to download.")
+				self.log("set useLocal to \"False\" to download.")
+			
 		else:
 			# https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00626.xml
-			# https://www.senate.gov/legislative/LIS/roll_call_votes/vote1
 			voteUrl= self.voteUrlBase + str(self.congressNum) + str(self.congressSession) + "/vote_" + str(self.congressNum) +"_"+ str(self.congressSession) +"_"+ str(voteNum)+".xml"
-			print(voteUrl)
+			print("downloading " + voteUrl)
+			self.log("downloading " + voteUrl)
+			
 			response = requests.get(voteUrl)
 			return response.text
 
@@ -61,7 +84,9 @@ class senate:
 					with open("senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml", "w") as f:
 						f.write(vote)
 			else:
-				print("File not saved. Not an XML file.")
+				print("voteNum " + voteNum + "File not saved. Not an XML file.")
+				self.log("voteNum " + voteNum + "File not saved. Not an XML file.")
+				
 
 	def pullLatestVote(self):
 		return self.pullVote(self.latest_vote())
@@ -71,12 +96,15 @@ class senate:
 			self.pullVoteList()
 
 		# prints the first 5 lines of response
+		print("First 5 lines of senateVoteSummary")
+		self.log("First 5 lines of senateVoteSummary")
 		i=0
 		for line in self.senateVoteSummary.splitlines():
 			i=i+1
 			if i==6:
 				break
 			print(line)
+			self.log(line)
 
 	def latest_vote(self):
 		if self.senateVoteSummary == None:
@@ -153,3 +181,41 @@ class senate:
 
 		# with open("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + "_parsed.txt", "w") as f:
 		# 	f.write(tree)
+
+	def parseVote(self):
+		for vote in self.voteList:
+			# if not using local files, wait 2 seconds between pulls
+			if self.useLocal == False:
+				sleep(2) 
+			try:
+				voteTree = ET.fromstring(self.pullVote(vote.vote_number))
+			except TypeError:
+				print("vote_number " + vote.vote_number + " not found.")
+				self.log("vote_number " + vote.vote_number + " not found.")
+
+				continue
+
+			
+			counts = voteTree.find('count')
+			# yeas = vote.find('yeas').text.strip()
+			# nays = vote.find('nays').text.strip()
+			try:
+				vote.present = counts.find('present').text.strip()
+			except AttributeError:
+				if type(counts.find('present').text) == None:
+					vote.present = "0"
+			try:
+				vote.absent = counts.find('absent').text.strip()
+			except AttributeError:
+				if type(counts.find('absent').text) == None:
+					vote.absent = "0"
+			members = voteTree.find('members')
+			for member in members.iter('member'):
+				lName = member.find('last_name').text.strip()
+				fName = member.find('first_name').text.strip()
+				party = member.find('party').text.strip()
+				state = member.find('state').text.strip()
+				vote_cast = member.find('vote_cast').text.strip()
+				lis_member_id = member.find('lis_member_id').text.strip()
+				self.log(str(vote.vote_number) + "addMember" + fName + lName + party + state + 'Senate' + lis_member_id + vote_cast)
+				vote.addMember(fName, lName, party, state, 'Senate', lis_member_id, vote_cast)

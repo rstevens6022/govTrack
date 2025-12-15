@@ -18,11 +18,20 @@ class member:
 
 	#TODO: House does not list first name. Need to see how to find that.
 
-	def __init__ (self, fName, lName, party, state, chamber, id, vote)
-		# self.fName = fName
+	def __init__ (self, fName, lName, party, state, chamber, id, vote):
+		self.fName = fName
 		self.lName = lName
 		self.party = party
 		self.state = state
 		self.chamber = chamber
 		self.id = id
 		self.vote = vote
+	
+	def __str__ (self):
+		return (str(self.fName) + ", " +
+				str(self.lName) + ", " +
+				str(self.party) + ", " +
+				str(self.state) + ", " +
+				str(self.chamber) + ", " +
+				str(self.id) + ", " +
+				str(self.vote))
