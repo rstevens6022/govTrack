@@ -1,6 +1,7 @@
 import requests
 import re
 import xml.etree.ElementTree as ET
+import os
 import senateVote
 from time import sleep
 from datetime import datetime
@@ -17,16 +18,32 @@ class senate:
 		self.senateVoteSummaryTree = None
 		self.voteList = []
 
+	def makeLogDir(self):
+		try:
+			os.mkdir('logs')
+		except FileExistsError:
+			print("logs directory already exists")
+	
+	def makeDataDir(self):
+		try:
+			os.mkdir('data')
+		except FileExistsError:
+			print("data directory already exists")
+			
 	def clearLog(self):
-		open("logFile.txt", "w")
-		self.log("New Log File")
+		try:
+			open("logs/logFile.txt", "w")
+			self.log("New Log File")
+		except FileNotFoundError:
+			self.makeLogDir()
 
 
 	def log(self,text):
-		# with open("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml", "w") as f:
-		# 			f.write(self.senateVoteSummary)
-		with open("logFile.txt", "a") as f:
-					f.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S') + " :: " + str(text) + '\n')
+		try:
+			with open("logs/logFile.txt", "a") as f:
+				f.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S') + " :: " + str(text) + '\n')
+		except FileNotFoundError:
+			self.makeLogDir()
 
 
 	def get_url(self):
@@ -36,10 +53,11 @@ class senate:
 		# downloads and stores votelist .xml 
 		if self.useLocal == True:
 			try:
-				self.senateVoteSummary = open("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml").read()
+				path = "data/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
+				self.senateVoteSummary = open(path).read()
 			except FileNotFoundError:
-				print("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml" + " not found")
-				self.log("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml" + " not found")
+				print(path + " not found")
+				self.log(path + " not found")
 				print("set useLocal to \"False\" to download.")
 				self.log("set useLocal to \"False\" to download.")
 		else:
@@ -51,18 +69,25 @@ class senate:
 			if '?xml version="1.0"' in self.senateVoteSummary.splitlines()[0]:
 				# print("xml file detected")
 				# print("saving senate_votes.xml")
-				with open("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml", "w") as f:
-					f.write(self.senateVoteSummary)
+				path = "data/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
+				try:
+					with open(path, "w") as f:
+						f.write(self.senateVoteSummary)
+				except FileNotFoundError:
+					self.makeDataDir()
+					# Totally won't ever make a recursive death spiral. 
+					self.saveVoteList()
 
 	def pullVote(self,voteNum):
 		# downloads and returns individual vote xml. 
 		if self.useLocal == True:
 			try:
-				vote = open("senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml").read()
+				path = "data/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
+				vote = open(path).read()
 				return vote
 			except FileNotFoundError:
-				print("senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml" + " not found")
-				self.log("senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml" + " not found")
+				print(path + " not found")
+				self.log(path + " not found")
 				print("set useLocal to \"False\" to download.")
 				self.log("set useLocal to \"False\" to download.")
 			
@@ -81,7 +106,8 @@ class senate:
 			if '?xml version="1.0"' in vote.splitlines()[0]:
 					# print("xml file detected")
 					# print("saving senate_votes.xml")
-					with open("senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml", "w") as f:
+					path = "data/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
+					with open(path, "w") as f:
 						f.write(vote)
 			else:
 				print("voteNum " + voteNum + "File not saved. Not an XML file.")
@@ -182,40 +208,46 @@ class senate:
 		# with open("senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + "_parsed.txt", "w") as f:
 		# 	f.write(tree)
 
-	def parseVote(self):
+
+	def parseVote(self, voteNum):
+		self.log("parsing vote " + str(voteNum))
+		# looping through known list. usually would only loo at most recent part for updates which would be placed at the start of the voteList
 		for vote in self.voteList:
-			# if not using local files, wait 2 seconds between pulls
-			if self.useLocal == False:
-				sleep(2) 
-			try:
-				voteTree = ET.fromstring(self.pullVote(vote.vote_number))
-			except TypeError:
-				print("vote_number " + vote.vote_number + " not found.")
-				self.log("vote_number " + vote.vote_number + " not found.")
+			if vote.vote_number == voteNum:
+				try:
+					voteTree = ET.fromstring(self.pullVote(vote.vote_number))
+				except TypeError:
+					print("vote_number " + vote.vote_number + " not found.")
+					self.log("vote_number " + vote.vote_number + " not found.")
 
-				continue
+					continue
 
-			
-			counts = voteTree.find('count')
-			# yeas = vote.find('yeas').text.strip()
-			# nays = vote.find('nays').text.strip()
-			try:
-				vote.present = counts.find('present').text.strip()
-			except AttributeError:
-				if type(counts.find('present').text) == None:
-					vote.present = "0"
-			try:
-				vote.absent = counts.find('absent').text.strip()
-			except AttributeError:
-				if type(counts.find('absent').text) == None:
-					vote.absent = "0"
-			members = voteTree.find('members')
-			for member in members.iter('member'):
-				lName = member.find('last_name').text.strip()
-				fName = member.find('first_name').text.strip()
-				party = member.find('party').text.strip()
-				state = member.find('state').text.strip()
-				vote_cast = member.find('vote_cast').text.strip()
-				lis_member_id = member.find('lis_member_id').text.strip()
-				self.log(str(vote.vote_number) + "addMember" + fName + lName + party + state + 'Senate' + lis_member_id + vote_cast)
-				vote.addMember(fName, lName, party, state, 'Senate', lis_member_id, vote_cast)
+				
+				counts = voteTree.find('count')
+				# yeas = vote.find('yeas').text.strip()
+				# nays = vote.find('nays').text.strip()
+				try:
+					vote.present = counts.find('present').text.strip()
+				except AttributeError:
+					if type(counts.find('present').text) == None:
+						vote.present = "0"
+				try:
+					vote.absent = counts.find('absent').text.strip()
+				except AttributeError:
+					if type(counts.find('absent').text) == None:
+						vote.absent = "0"
+				members = voteTree.find('members')
+				for member in members.iter('member'):
+					lName = member.find('last_name').text.strip()
+					fName = member.find('first_name').text.strip()
+					party = member.find('party').text.strip()
+					state = member.find('state').text.strip()
+					vote_cast = member.find('vote_cast').text.strip()
+					lis_member_id = member.find('lis_member_id').text.strip()
+					self.log(str(vote.vote_number) + "addMember:: " + fName + ", " + 
+							lName + ", " + party + ", " + state + ", " + 'Senate' +
+							 ", " + lis_member_id + ", " + vote_cast)
+					vote.addMember(fName, lName, party, state, 'Senate', lis_member_id, vote_cast)
+				
+				# exiting loop since the only vote to be parsed has been parsed.
+				break
