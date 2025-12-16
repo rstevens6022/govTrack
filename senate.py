@@ -3,20 +3,21 @@ import re
 import xml.etree.ElementTree as ET
 import os
 import senateVote
-from time import sleep
+import time
 from datetime import datetime
 
 class senate:
-	def __init__(self, congressNum, congressSession, useLocal):
+	def __init__(self, congressNum, congressSession):
 		self.congressNum = congressNum
 		self.congressSession = congressSession
-		self.useLocal = useLocal
+		self.useLocal = True
 		self.urlbase = "https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_"
 		self.senate_votes_url = self.urlbase + str(congressNum) + "_" + str(congressSession) + ".xml"
 		self.senateVoteSummary = None
 		self.voteUrlBase = "https://www.senate.gov/legislative/LIS/roll_call_votes/vote"
 		self.senateVoteSummaryTree = None
 		self.voteList = []
+		self.lastPullTime = time.time()
 
 	def makeLogDir(self):
 		try:
@@ -45,6 +46,15 @@ class senate:
 		except FileNotFoundError:
 			self.makeLogDir()
 
+	def timer(self):
+		now = time.time()
+		# print("now::" + str(now) + " lastPullTime::" + str(self.lastPullTime) + " diff::" + str(now - self.lastPullTime))
+		# self.log("now::" + str(now) + " lastPullTime::" + str(self.lastPullTime) + " diff::" + str(now - self.lastPullTime))
+		if now - self.lastPullTime <= 2:
+			# print("wait")
+			# self.log("wait")
+			time.sleep(2)
+		self.lastPullTime = now
 
 	def get_url(self):
 		return self.senate_votes_url
@@ -78,8 +88,11 @@ class senate:
 					# Totally won't ever make a recursive death spiral. 
 					self.saveVoteList()
 
+	# downloads and returns individual vote xml files. 
 	def pullVote(self,voteNum):
-		# downloads and returns individual vote xml. 
+		# waits a moment to not blast the server
+		self.timer()
+
 		if self.useLocal == True:
 			try:
 				path = "data/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
@@ -99,20 +112,35 @@ class senate:
 			
 			response = requests.get(voteUrl)
 			return response.text
+	
+	# download and save all votes in the votelist. 
+	def pullAllVotes(self):
+		if self.useLocal == True:
+			print('To pull all votes useLocal must be set to False.')
+			self.log('To pull all votes useLocal must be set to False.')
+		else:
+			self.log("pulling all votes")
+			if self.voteList == []:
+				self.parse_voteList()
+			for vote in self.voteList:
+					self.saveVote(vote.vote_number)
 
+	# saves only if file is not downloaded
 	def saveVote(self,voteNum):
 		if self.useLocal == False:	
-			vote = self.pullVote(voteNum)
-			if '?xml version="1.0"' in vote.splitlines()[0]:
-					# print("xml file detected")
-					# print("saving senate_votes.xml")
-					path = "data/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
-					with open(path, "w") as f:
-						f.write(vote)
-			else:
-				print("voteNum " + voteNum + "File not saved. Not an XML file.")
-				self.log("voteNum " + voteNum + "File not saved. Not an XML file.")
-				
+			path = "data/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
+			if not os.path.isfile(path):
+				vote = self.pullVote(voteNum)
+				if '?xml version="1.0"' in vote.splitlines()[0]:
+						# print("xml file detected")
+						# print("saving senate_votes.xml")
+						self.log("saving " + path)
+						with open(path, "w") as f:
+							f.write(vote)
+				else:
+					print("voteNum " + voteNum + "File not saved. Not an XML file.")
+					self.log("voteNum " + voteNum + "File not saved. Not an XML file.")
+
 
 	def pullLatestVote(self):
 		return self.pullVote(self.latest_vote())

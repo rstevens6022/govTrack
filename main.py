@@ -19,7 +19,7 @@ def tests(useLocal):
 
 # ------------------------------------------
 # Testing basic stuff
-# senateTest = senate.senate(119, 1, True)
+# senateTest = senate.senate(119, 1)
 
 # print("----getting Url-----")
 # print(senateTest.get_url())
@@ -29,30 +29,30 @@ def tests(useLocal):
 
 
 # del senateTest
-# senateTest = senate.senate(119, 1, True)
+# senateTest = senate.senate(119, 1)
 
 # print("----Testing with Uselocal == False-----")
 # tests(False)
 
 # ------------------------------------------
 # Testing 
-senateTest = senate.senate(119, 1, False)
-senateTest.clearLog()
+# senateTest = senate.senate(119, 1)
+# senateTest.clearLog()
 
 
-senateTest.pullVoteList()
-print(senateTest.latest_vote())
-senateTest.saveVoteList()
+# senateTest.pullVoteList()
+# print(senateTest.latest_vote())
+# senateTest.saveVoteList()
 
-print("------Pulling latest vote-------")
+# print("------Pulling latest vote-------")
 
-print(senateTest.pullVote(senateTest.latest_vote()))
-print(senateTest.pullLatestVote())
-senateTest.saveVote(senateTest.latest_vote())
+# print(senateTest.pullVote(senateTest.latest_vote()))
+# print(senateTest.pullLatestVote())
+# senateTest.saveVote(senateTest.latest_vote())
 
 # ------------------------------------------
 # test xml parsing
-# senateTest = senate.senate(119,1,True)
+# senateTest = senate.senate(119,1)
 # senateTest.clearLog()
 
 # senateTest.log("-----------parse_VoteList-------------")
@@ -73,4 +73,10 @@ senateTest.saveVote(senateTest.latest_vote())
 # 		# senateTest.log(vote.printMembers())
 # 		senateTest.log("-----------print members[]-------------")
 # 		senateTest.log(str(vote.members))
-		
+
+
+# pull everything
+senateTest = senate.senate(119,1)
+# senateTest.useLocal = False
+# senateTest.clearLog()
+senateTest.pullAllVotes()
