@@ -73,25 +73,26 @@ class senate:
 		else:
 			response = requests.get(self.senate_votes_url)
 			self.senateVoteSummary = response.text
+			self.saveVoteList()
 
 	def saveVoteList(self):
 		if self.useLocal == False:
-			if '?xml version="1.0"' in self.senateVoteSummary.splitlines()[0]:
-				# print("xml file detected")
-				# print("saving senate_votes.xml")
-				path = "data/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
-				try:
-					with open(path, "w") as f:
-						f.write(self.senateVoteSummary)
-				except FileNotFoundError:
-					self.makeDataDir()
-					# Totally won't ever make a recursive death spiral. 
-					self.saveVoteList()
+			path = "data/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
+			if not os.path.isfile(path):
+				if '?xml version="1.0"' in self.senateVoteSummary.splitlines()[0]:
+					# print("xml file detected")
+					# print("saving senate_votes.xml")
+					try:
+						with open(path, "w") as f:
+							f.write(self.senateVoteSummary)
+					except FileNotFoundError:
+						self.makeDataDir()
+						# Totally won't ever make a recursive death spiral. 
+						self.saveVoteList()
 
 	# downloads and returns individual vote xml files. 
 	def pullVote(self,voteNum):
-		# waits a moment to not blast the server
-		self.timer()
+		
 
 		if self.useLocal == True:
 			try:
@@ -105,6 +106,8 @@ class senate:
 				self.log("set useLocal to \"False\" to download.")
 			
 		else:
+			# waits a moment to not blast the server
+			self.timer()
 			# https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00626.xml
 			voteUrl= self.voteUrlBase + str(self.congressNum) + str(self.congressSession) + "/vote_" + str(self.congressNum) +"_"+ str(self.congressSession) +"_"+ str(voteNum)+".xml"
 			print("downloading " + voteUrl)
@@ -119,7 +122,7 @@ class senate:
 			print('To pull all votes useLocal must be set to False.')
 			self.log('To pull all votes useLocal must be set to False.')
 		else:
-			self.log("pulling all votes")
+			self.log("pulling all votes for congress " + str(self.congressNum) + " session " + str(self.congressSession) )
 			if self.voteList == []:
 				self.parse_voteList()
 			for vote in self.voteList:
@@ -201,14 +204,41 @@ class senate:
 				# for child in vote:
 				# 	print(child.tag, child.attrib)
 				vote_number = vote.find('vote_number').text.strip()
+				print("adding vote_number " + str(vote_number) + " into voteList")
+				self.log("adding vote_number " + str(vote_number) + " into voteList")
 				vote_date = vote.find('vote_date').text.strip()
-				issue = vote.find('issue').text.strip()
-				question = vote.find('question').text.strip()
-				result = vote.find('result').text.strip()
-				vote_tally = vote.find('vote_tally')
-				yeas = vote_tally.find('yeas').text.strip()
-				nays = vote_tally.find('nays').text.strip()
-				title = vote.find('title').text.strip()
+				try:
+					issue = vote.find('issue').text.strip()
+					question = vote.find('question').text.strip()
+					result = vote.find('result').text.strip()
+					vote_tally = vote.find('vote_tally')
+					yeas = vote_tally.find('yeas').text.strip()
+					nays = vote_tally.find('nays').text.strip()
+					title = vote.find('title').text.strip()
+				except AttributeError:
+					self.log("Warning: Congress " + str(self.congressNum) + " Session " +str(self.congressSession) + " Vote " + str(vote_number) +" has missing data")
+					title = vote.find('title').text.strip()
+					if "secret" in title:
+						issue = "secret"
+						question = "secret"
+						result = "secret"
+						yeas = "-1"
+						nays = "-1"
+						continue
+					# handling thomas.loc.gov era data
+					issue = vote.find('issue')
+					if not isinstance(issue, str):
+						issue = issue.find('A').text.strip()
+						self.log("Parsing thomas.loc.gov issue for Congress " + str(self.congressNum) + " Session " +str(self.congressSession) + " Vote " + str(vote_number))
+						print("Parsing thomas.loc.gov issue for Congress " + str(self.congressNum) + " Session " +str(self.congressSession) + " Vote " + str(vote_number))
+						question = vote.find('question').text.strip()
+						result = vote.find('result').text.strip()
+						vote_tally = vote.find('vote_tally')
+						yeas = vote_tally.find('yeas').text.strip()
+						nays = vote_tally.find('nays').text.strip()
+						title = vote.find('title').text.strip()
+
+
 
 				self.voteList.append(senateVote.senateVote(self.congressNum, self.congressSession, vote_number, vote_date, issue, question, result, yeas, nays, title))	
 				
@@ -239,6 +269,7 @@ class senate:
 
 	def parseVote(self, voteNum):
 		self.log("parsing vote " + str(voteNum))
+		print("parsing vote " + str(voteNum))
 		# looping through known list. usually would only loo at most recent part for updates which would be placed at the start of the voteList
 		for vote in self.voteList:
 			if vote.vote_number == voteNum:
@@ -272,9 +303,9 @@ class senate:
 					state = member.find('state').text.strip()
 					vote_cast = member.find('vote_cast').text.strip()
 					lis_member_id = member.find('lis_member_id').text.strip()
-					self.log(str(vote.vote_number) + "addMember:: " + fName + ", " + 
-							lName + ", " + party + ", " + state + ", " + 'Senate' +
-							 ", " + lis_member_id + ", " + vote_cast)
+					# self.log(str(vote.vote_number) + "addMember:: " + fName + ", " + 
+					# 		lName + ", " + party + ", " + state + ", " + 'Senate' +
+					# 		 ", " + lis_member_id + ", " + vote_cast)
 					vote.addMember(fName, lName, party, state, 'Senate', lis_member_id, vote_cast)
 				
 				# exiting loop since the only vote to be parsed has been parsed.
