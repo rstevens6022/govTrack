@@ -78,17 +78,29 @@ class senate:
 	def saveVoteList(self):
 		if self.useLocal == False:
 			path = "data/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
-			if not os.path.isfile(path):
-				if '?xml version="1.0"' in self.senateVoteSummary.splitlines()[0]:
-					# print("xml file detected")
-					# print("saving senate_votes.xml")
-					try:
-						with open(path, "w") as f:
-							f.write(self.senateVoteSummary)
-					except FileNotFoundError:
-						self.makeDataDir()
-						# Totally won't ever make a recursive death spiral. 
-						self.saveVoteList()
+			# if not os.path.isfile(path):
+			# 	if '?xml version="1.0"' in self.senateVoteSummary.splitlines()[0]:
+			# 		# print("xml file detected")
+			# 		# print("saving senate_votes.xml")
+			# 		try:
+			# 			with open(path, "w") as f:
+			# 				f.write(self.senateVoteSummary)
+			# 		except FileNotFoundError:
+			# 			self.makeDataDir()
+			# 			# Totally won't ever make a recursive death spiral. 
+			# 			self.saveVoteList()
+			if '?xml version="1.0"' in self.senateVoteSummary.splitlines()[0]:
+				# print("xml file detected")
+				# print("saving senate_votes.xml")
+				try:
+					with open(path, "w") as f:
+						f.write(self.senateVoteSummary)
+				except FileNotFoundError:
+					self.makeDataDir()
+					# Totally won't ever make a recursive death spiral. 
+					self.saveVoteList()
+
+
 
 	# downloads and returns individual vote xml files. 
 	def pullVote(self,voteNum):
@@ -240,7 +252,6 @@ class senate:
 
 
 
-				self.voteList.append(senateVote.senateVote(self.congressNum, self.congressSession, vote_number, vote_date, issue, question, result, yeas, nays, title))	
 				
 				# print(vote_number, vote_date, issue, question, result, yeas, nays, title)
 				# print("-----------------------------")
@@ -252,10 +263,71 @@ class senate:
 				# print("yeas::", yeas)
 				# print("nays::", nays)
 				# print("title::", title)
-			# else:
+			else:
 				#TODO: figure out how/if to handle en bloc votes for nominations. 
+				# Need to handle b/c data is missing and not being pulled.
 				#
 				# print('vote was en_bloc')
+				self.log("Warning: Congress " + str(self.congressNum) + " Session " +str(self.congressSession) + " Vote " + str(vote_number) +" is an En Bloc vote")
+				vote_number = vote.find('vote_number').text.strip()
+				print("adding vote_number " + str(vote_number) + " into voteList")
+				self.log("adding vote_number " + str(vote_number) + " into voteList")
+				vote_date = vote.find('vote_date').text.strip()
+				
+				# The following are in multiple matter sections 
+				# 			vote/en_bloc/matter/
+				issue = ''
+				question = ''
+				
+				en_bloc = vote.find('en_bloc')
+				secret_flag = False
+				for matter in vote.iter('matter'):
+					try:
+						issue = issue + matter.find('issue').text.strip() + ", "
+						question = question + matter.find('question').text.strip() + ", "
+						# result = result + matter.find('result').text.strip() + ", "
+					except AttributeError:
+						self.log("Warning: Congress " + str(self.congressNum) + " Session " +str(self.congressSession) + " Vote " + str(vote_number) +" has missing data")
+						title = vote.find('title').text.strip()
+						if "secret" in title:
+							issue = "secret"
+							question = "secret"
+							result = "secret"
+							yeas = "-1"
+							nays = "-1"
+							# breaking here because I don't want to see mulitple secret votes en_bloc in parsed data
+							# would look like "secret, secret, secret, ..., secret, secret, secret, "
+							secret_flag = True
+							break
+						# handling thomas.loc.gov era data
+						issue = matter.find('issue')
+						if not isinstance(issue, str):
+							issue = issue + issue.find('A').text.strip() + ", "
+							self.log("Parsing thomas.loc.gov issue for Congress " + str(self.congressNum) + " Session " +str(self.congressSession) + " Vote " + str(vote_number))
+							print("Parsing thomas.loc.gov issue for Congress " + str(self.congressNum) + " Session " +str(self.congressSession) + " Vote " + str(vote_number))
+							question = question + matter.find('question').text.strip() + ", "
+							# result = result + matter.find('result').text.strip() + ", "
+				# Below needs to be handled a level up form here outside the en_bloc
+				if secret_flag == False:
+					# should all be the same "result", so condensing "result" here instead of looping
+					# In theory could do the same for "question" but the question may not be the same for all of the en_bloc votes.
+					result = en_bloc.find('matter').find('result').text.strip()
+					vote_tally = vote.find('vote_tally')
+					yeas = vote_tally.find('yeas').text.strip()
+					nays = vote_tally.find('nays').text.strip()
+					title = vote.find('title').text.strip()
+					secret_flag = True
+
+
+
+
+
+
+
+			#Finally add vote to voteLst
+			self.voteList.append(senateVote.senateVote(self.congressNum, self.congressSession, vote_number, vote_date, 
+								issue.rstrip(', '), question.rstrip(', '), result.rstrip(', '), yeas, nays, title))	
+
 
 		# print("------printing votes---------")
 		# for vote in self.voteList:
