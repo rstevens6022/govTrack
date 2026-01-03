@@ -1,3 +1,4 @@
+import sys
 import requests
 import re
 import xml.etree.ElementTree as ET
@@ -203,6 +204,36 @@ class senate:
 		if self.senateVoteSummary == None:
 			self.pullVoteList()
 		self.senateVoteSummaryTree = ET.fromstring(self.senateVoteSummary)
+
+
+		# Add check for correct session/congress
+		# Senate added 2nd session of 119 cong using the 1 session xml before the session started so I need to check.
+		# Do not trust data source.
+
+		congressCheck = self.senateVoteSummaryTree.find('congress').text.strip()
+		# print("congressCheck::" + congressCheck + " self.congressNum::" + self.congressNum)
+		# self.log("congressCheck::" + congressCheck + " self.congressNum::" + self.congressNum)
+		# self.log("type(congressCheck):: " + str(type(congressCheck)) + " type(self.congressNum)::" + str(type(self.congressNum)))
+
+
+		if congressCheck != self.congressNum:
+			self.log("Warning: File is for congress " + congressCheck + " when requesting congress " + str(self.congressNum))
+			self.log("Exiting")
+			sys.exit()
+
+		sessionCheck = self.senateVoteSummaryTree.find('session').text.strip()
+		# print("sessionCheck:: " + sessionCheck + "self.congressSession::" + self.congressSession)
+		# self.log("sessionCheck:: " + sessionCheck + "self.congressSession::" + self.congressSession)
+		# self.log("type(sessionCheck):: " + str(type(sessionCheck)) + " type(self.congressSession)::" + str(type(self.congressSession)))
+
+
+		if sessionCheck != self.congressSession:
+			print("Warning: File is for congress " + sessionCheck + " when requesting congress " + str(self.congressSession))
+			print("Exiting")
+			self.log("Warning: File is for congress " + sessionCheck + " when requesting congress " + str(self.congressSession))
+			self.log("Exiting")
+			sys.exit()
+
 
 		# i=0
 		# voteList = []
