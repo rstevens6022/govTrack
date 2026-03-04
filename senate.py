@@ -31,6 +31,10 @@ class senate:
 			os.mkdir('data')
 		except FileExistsError:
 			print("data directory already exists")
+		try:
+			os.mkdir('data/senate')
+		except FileExistsError:
+			print("senate directory already exists")
 			
 	def clearLog(self):
 		try:
@@ -64,7 +68,7 @@ class senate:
 		# downloads and stores votelist .xml 
 		if self.useLocal == True:
 			try:
-				path = "data/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
+				path = "data/senate/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
 				self.senateVoteSummary = open(path).read()
 			except FileNotFoundError:
 				print(path + " not found")
@@ -78,7 +82,7 @@ class senate:
 
 	def saveVoteList(self):
 		if self.useLocal == False:
-			path = "data/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
+			path = "data/senate/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
 			# if not os.path.isfile(path):
 			# 	if '?xml version="1.0"' in self.senateVoteSummary.splitlines()[0]:
 			# 		# print("xml file detected")
@@ -109,7 +113,7 @@ class senate:
 
 		if self.useLocal == True:
 			try:
-				path = "data/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
+				path = "data/senate/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
 				vote = open(path).read()
 				return vote
 			except FileNotFoundError:
@@ -144,7 +148,7 @@ class senate:
 	# saves only if file is not downloaded
 	def saveVote(self,voteNum):
 		if self.useLocal == False:	
-			path = "data/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
+			path = "data/senate/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
 			if not os.path.isfile(path):
 				vote = self.pullVote(voteNum)
 				if '?xml version="1.0"' in vote.splitlines()[0]:
