@@ -192,8 +192,22 @@ class house:
 			
 			try:
 				with open(path, "w") as f:
-					for item in self.voteList:
-						outline = str(item) + '\n'
+					
+					for vote in self.voteList:
+						outline = ''
+						i=0
+						for item in vote:
+							#parse individual item so I can remove '' and add "" for string in final element
+							if i == 0:
+								outline = str(item)
+							elif i in [2,3,5]:
+								outline = outline + ', "' + str(item) +'"'
+							else:
+								outline = outline + ", " + str(item)
+								
+							i = i + 1
+						# outline = str(vote) + '\n'
+						outline = outline + '\r\n'
 						# outline = ', '.join(str(item)) + '\n'
 						f.write(str(outline))
 			except FileNotFoundError:
