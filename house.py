@@ -7,6 +7,7 @@ import os
 # import senateVote
 import time
 from datetime import datetime
+import csv
 
 class house:
 	def __init__(self, congressNum, congressSession):
@@ -69,22 +70,13 @@ class house:
 
 	def pullVote(self,voteNum):
 		if self.useLocal == True:
-			pass
-			# try:
-			# 	path = "data/senate/senate_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
-			# 	vote = open(path).read()
-			# 	return vote
-			# except FileNotFoundError:
-			# 	print(path + " not found")
-			# 	self.log(path + " not found")
-			# 	print("set useLocal to \"False\" to download.")
-			# 	self.log("set useLocal to \"False\" to download.")
+			return readVote(voteNum)
 			
 		else:
 			# waits a moment to not blast the server
 			self.timer()
 			# https://clerk.house.gov/evs/2025/roll305.xml
-			voteUrl= self.voteUrlBase + str(self.year) + "/" + str(voteNum)+".xml"
+			voteUrl= self.voteUrlBase + str(self.year) + "/roll" + str(voteNum).zfill(3)+".xml"
 			print("downloading " + voteUrl)
 			self.log("downloading " + voteUrl)
 			
@@ -145,15 +137,8 @@ class house:
 	def pullVoteList(self):
 		# downloads and stores votelist .xml 
 		if self.useLocal == True:
-			pass
-			# try:
-			# 	path = "data/senate/senate_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".xml"
-			# 	self.senateVoteSummary = open(path).read()
-			# except FileNotFoundError:
-			# 	print(path + " not found")
-			# 	self.log(path + " not found")
-			# 	print("set useLocal to \"False\" to download.")
-			# 	self.log("set useLocal to \"False\" to download.")
+			self.readVoteList()
+
 		else:
 			if self.latestVote == None:
 				self.getLatestVote()
@@ -184,9 +169,11 @@ class house:
 
 				i=i-1
 		self.cleanVoteList()
+		self.saveVoteList()
 
 
 	def saveVoteList(self):
+		# No sense saving if reading from local
 		if self.useLocal == False:
 			path = "data/house/house_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".csv"
 			
@@ -214,3 +201,58 @@ class house:
 				self.makeDataDir()
 				# Totally won't ever make a recursive death spiral. 
 				self.saveVoteList()
+
+	def readVoteList(self):
+		# Why would this read if not using local. Test for useLocal should be in calling function.
+		path = "data/house/house_votes_" + str(self.congressNum) + "_" + str(self.congressSession) + ".csv"
+		try:
+			with open(path, 'r') as f:
+				# for line in f:
+				# 	self.log(line.strip())
+				# 	# list of tuples
+				reader = csv.reader(f)
+				for row in reader:
+					# Put this in a loop? It looks dumb this way, but would a loop be more efficient?
+					row[0] = int(row[0])
+					row[1] = row[1].strip()
+					row[2] = row[2].strip().strip('\"')
+					row[3] = row[3].strip().strip('\"')
+					row[4] = row[4].strip()
+					row[5] = row[5].strip().strip('\"')
+					self.log(row)
+					itemTuple = tuple(row)
+					self.voteList.append(itemTuple)	
+		except FileNotFoundError:
+			print(path + " not found")
+			self.log(path + " not found")
+			print("set useLocal to \"False\" to download.")
+			self.log("set useLocal to \"False\" to download.")
+
+	def saveVote(self, voteNum):
+		if self.useLocal == False:	
+			path = "data/house/house_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
+			if not os.path.isfile(path):
+				vote = self.pullVote(voteNum)
+				if '?xml version="1.0"' in vote.splitlines()[0]:
+						# print("xml file detected")
+						# print("saving senate_votes.xml")
+						self.log("saving " + path)
+						with open(path, "w") as f:
+							f.write(vote)
+				else:
+					print("voteNum " + voteNum + "File not saved. Not an XML file.")
+					self.log("voteNum " + voteNum + "File not saved. Not an XML file.")
+
+	def readVote(self, voteNum):
+		try:
+			path = "data/house/house_vote_" + str(self.congressNum) + "_" + str(self.congressSession) + "_" +str(voteNum) + ".xml"
+			vote = open(path).read()
+			return vote
+		except FileNotFoundError:
+			print(path + " not found")
+			self.log(path + " not found")
+			print("set useLocal to \"False\" to download.")
+			self.log("set useLocal to \"False\" to download.")
+
+	# TODO Parse the votelist file into a list or something
+	# TODO Parse the individual vote files into a list or something
