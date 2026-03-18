@@ -1,10 +1,10 @@
 # import sys
 import requests
 # import re
-# import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup as BS
 import os
-# import senateVote
+import vote
 import time
 from datetime import datetime
 import csv
@@ -17,11 +17,11 @@ class house:
 		self.useLocal = True
 		# self.urlbase = "https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_"
 		# self.senate_votes_url = self.urlbase + str(congressNum) + "_" + str(congressSession) + ".xml"
-		# self.senateVoteSummary = None
 		self.voteUrlBase = "https://clerk.house.gov/evs/"
 		self.latestVote = None
 		# self.senateVoteSummaryTree = None
 		self.voteList = []
+		self.houseVoteSummary = []
 		self.lastPullTime = time.time()
 
 	def makeLogDir(self):
@@ -65,12 +65,12 @@ class house:
 		self.lastPullTime = now
 
 	def getYear(self, congressNum, congressSession):
-		return (2 * (congressNum-100) + 1987 + congressSession -1)
+		return (2 * (int(congressNum)-100) + 1987 + int(congressSession) -1)
 
 
 	def pullVote(self,voteNum):
 		if self.useLocal == True:
-			return readVote(voteNum)
+			return self.readVote(voteNum)
 			
 		else:
 			# waits a moment to not blast the server
@@ -82,6 +82,18 @@ class house:
 			
 			response = requests.get(voteUrl)
 			return response.text
+	
+	def pullAllVotes(self):
+		if self.useLocal == True:
+			print('To pull all votes useLocal must be set to False.')
+			self.log('To pull all votes useLocal must be set to False.')
+		else:
+			self.log("pulling all votes for congress " + str(self.congressNum) + " session " + str(self.congressSession) )
+			if self.houseVoteSummary == []:
+				self.pullVoteList()
+			for vote in self.houseVoteSummary:
+					self.saveVote(vote[0])
+
 
 	def getLatestVote(self):
 		if self.useLocal == True:
@@ -106,7 +118,7 @@ class house:
 			
 			# table = voteListPage.table.find_all('td')
 			# for item in table:
-			# 	self.voteList.append(item.get_text())	
+			# 	self.houseVoteSummary.append(item.get_text())	
 						
 			table = voteListPage.table.find_all('tr')
 			for td in table:
@@ -119,12 +131,12 @@ class house:
 				if itemList[0] != 'Roll':
 					itemList[0] = int(itemList[0])
 					itemTuple = tuple(itemList)
-					self.voteList.append(itemTuple)	
-			# print(self.voteList)
-			# self.log(self.voteList)
+					self.houseVoteSummary.append(itemTuple)	
+			# print(self.houseVoteSummary)
+			# self.log(self.houseVoteSummary)
 			# self.log(table)
 			# tr=voteListPage.find_all('tr')
-			self.latestVote = self.voteList[1][0]
+			self.latestVote = self.houseVoteSummary[1][0]
 			self.cleanVoteList()
 			return self.latestVote
 
@@ -132,7 +144,7 @@ class house:
 		# places the voteList[] into a set, then returns the resulting list made up of that set.
 		# This removes duplications.
 		# Sorting the list afterwords
-		self.voteList = sorted(list(set(self.voteList)), reverse = True)
+		self.houseVoteSummary = sorted(list(set(self.houseVoteSummary)), reverse = True)
 	
 	def pullVoteList(self):
 		# downloads and stores votelist .xml 
@@ -147,8 +159,8 @@ class house:
 				self.timer()
 				# https://clerk.house.gov/evs/2026/ROLL_000.aspquit
 				url= self.voteUrlBase + str(self.year) +"/ROLL_" + str(i) + "00.asp"
-				print("Getting votelist from " + url)
-				self.log("Getting votelist from " + url)
+				print("Getting voteList from " + url)
+				self.log("Getting voteList from " + url)
 				response = requests.get(url)
 				# print(response)
 				# self.log(response)
@@ -165,7 +177,7 @@ class house:
 					if itemList[0] != 'Roll':
 						itemList[0] = int(itemList[0])
 						itemTuple = tuple(itemList)
-						self.voteList.append(itemTuple)	
+						self.houseVoteSummary.append(itemTuple)	
 
 				i=i-1
 		self.cleanVoteList()
@@ -180,7 +192,7 @@ class house:
 			try:
 				with open(path, "w") as f:
 					
-					for vote in self.voteList:
+					for vote in self.houseVoteSummary:
 						outline = ''
 						i=0
 						for item in vote:
@@ -221,7 +233,7 @@ class house:
 					row[5] = row[5].strip().strip('\"')
 					self.log(row)
 					itemTuple = tuple(row)
-					self.voteList.append(itemTuple)	
+					self.houseVoteSummary.append(itemTuple)	
 		except FileNotFoundError:
 			print(path + " not found")
 			self.log(path + " not found")
@@ -256,9 +268,25 @@ class house:
 
 	# TODO Parse the votelist file into a list or something
 	def parseVoteList(self):
-		pass
+		if self.houseVoteSummary == []:
+			self.pullVoteList()
+		for voteItem in self.houseVoteSummary:
+			vote_number = voteItem[0]
+			vote_date = voteItem[1]
+			issue = voteItem[2]
+			question = voteItem[3]
+			result = voteItem[4]
+			# yeas and nays not reported in houseVoteSummary
+			# need to grab them from vote file
+			yeas, nays = self.getYeaNay(vote_number)
+			title = voteItem[5]
+			self.log('appending vote '+ str(vote_number) + ' to voteList')
+			self.voteList.append(vote.vote(self.congressNum, self.congressSession, vote_number, vote_date, 
+								issue.rstrip(', '), question.rstrip(', '), result.rstrip(', '), yeas, nays, title))	
+
 	
 	# TODO Parse the individual vote files into a list or something
+	# Below borrowed form senate.py and may not work
 	def parseVote(self, voteNum):
 		self.log("parsing vote " + str(voteNum))
 		print("parsing vote " + str(voteNum))
@@ -303,5 +331,12 @@ class house:
 				# exiting loop since the only vote to be parsed has been parsed.
 				break
 
+	def getYeaNay(self, voteNum):
+		self.log('Getting yeas/nays for vote ' + str(voteNum))
+		print('Getting yeas/nays for vote ' + str(voteNum))
+		voteTree = ET.fromstring(self.pullVote(voteNum))
+		totals = voteTree.find('vote-metadata').find('vote-totals').find('totals-by-vote')
+		yeas = totals.find('yea-total').text.strip()
+		nays = totals.find('nay-total').text.strip()
+		return yeas, nays
 
-# TODO Need to replace all instances of voteList with some other variabel so senate.voteList and house.Votelist are used the same.
