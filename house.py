@@ -255,4 +255,53 @@ class house:
 			self.log("set useLocal to \"False\" to download.")
 
 	# TODO Parse the votelist file into a list or something
+	def parseVoteList(self):
+		pass
+	
 	# TODO Parse the individual vote files into a list or something
+	def parseVote(self, voteNum):
+		self.log("parsing vote " + str(voteNum))
+		print("parsing vote " + str(voteNum))
+		# looping through known list. usually would only loo at most recent part for updates which would be placed at the start of the voteList
+		for vote in self.voteList:
+			if vote.vote_number == voteNum:
+				try:
+					voteTree = ET.fromstring(self.pullVote(vote.vote_number))
+				except TypeError:
+					print("vote_number " + vote.vote_number + " not found.")
+					self.log("vote_number " + vote.vote_number + " not found.")
+
+					continue
+
+				
+				counts = voteTree.find('count')
+				# yeas = vote.find('yeas').text.strip()
+				# nays = vote.find('nays').text.strip()
+				try:
+					vote.present = counts.find('present').text.strip()
+				except AttributeError:
+					if type(counts.find('present').text) == None:
+						vote.present = "0"
+				try:
+					vote.absent = counts.find('absent').text.strip()
+				except AttributeError:
+					if type(counts.find('absent').text) == None:
+						vote.absent = "0"
+				members = voteTree.find('members')
+				for member in members.iter('member'):
+					lName = member.find('last_name').text.strip()
+					fName = member.find('first_name').text.strip()
+					party = member.find('party').text.strip()
+					state = member.find('state').text.strip()
+					vote_cast = member.find('vote_cast').text.strip()
+					lis_member_id = member.find('lis_member_id').text.strip()
+					# self.log(str(vote.vote_number) + "addMember:: " + fName + ", " + 
+					# 		lName + ", " + party + ", " + state + ", " + 'Senate' +
+					# 		 ", " + lis_member_id + ", " + vote_cast)
+					vote.addMember(fName, lName, party, state, 'Senate', lis_member_id, vote_cast)
+				
+				# exiting loop since the only vote to be parsed has been parsed.
+				break
+
+
+# TODO Need to replace all instances of voteList with some other variabel so senate.voteList and house.Votelist are used the same.
