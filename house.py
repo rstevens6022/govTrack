@@ -97,8 +97,9 @@ class house:
 
 	def getLatestVote(self):
 		if self.useLocal == True:
-			print("useLocal == True")
-			self.log("useLocal == True")
+			print("useLocal == True, set to False to get the latest vote.")
+			self.log("useLocal == True, set to False to get the latest vote.")
+			
 			pass
 			#Check local files to see latest vote downloaded
 		else:
@@ -266,7 +267,6 @@ class house:
 			print("set useLocal to \"False\" to download.")
 			self.log("set useLocal to \"False\" to download.")
 
-	# TODO Parse the votelist file into a list or something
 	def parseVoteList(self):
 		if self.houseVoteSummary == []:
 			self.pullVoteList()
@@ -301,34 +301,42 @@ class house:
 
 					continue
 
-				
-				counts = voteTree.find('count')
+				# counts = voteTree.find('count')
+				counts = voteTree.find('vote-metadata').find('vote-totals').find('totals-by-vote')
 				# yeas = vote.find('yeas').text.strip()
 				# nays = vote.find('nays').text.strip()
 				try:
-					vote.present = counts.find('present').text.strip()
+					vote.present = counts.find('present-total').text.strip()
 				except AttributeError:
-					if type(counts.find('present').text) == None:
+					if type(counts.find('present-total').text) == None:
 						vote.present = "0"
 				try:
-					vote.absent = counts.find('absent').text.strip()
+					vote.absent = counts.find('absnot-voting-totalent').text.strip()
 				except AttributeError:
-					if type(counts.find('absent').text) == None:
+					if type(counts.find('not-voting-total').text) == None:
 						vote.absent = "0"
-				members = voteTree.find('members')
-				for member in members.iter('member'):
-					lName = member.find('last_name').text.strip()
-					fName = member.find('first_name').text.strip()
-					party = member.find('party').text.strip()
-					state = member.find('state').text.strip()
-					vote_cast = member.find('vote_cast').text.strip()
-					lis_member_id = member.find('lis_member_id').text.strip()
+				members = voteTree.find('vote-data')
+				self.log("Grabbing Member data")
+				for member in members.iter('recorded-vote'):
+					legislator = member.find('legislator')
+					lName = legislator.get('unaccented-name')
+					# TODO figure out hwo to grab first name
+					# fName = member.find('first_name').text.strip()
+					party = legislator.get('party')
+					state = legislator.get('state')
+					vote_cast = member.find('vote').text.strip()
+					lis_member_id = legislator.get('name-id')
 					# self.log(str(vote.vote_number) + "addMember:: " + fName + ", " + 
 					# 		lName + ", " + party + ", " + state + ", " + 'Senate' +
 					# 		 ", " + lis_member_id + ", " + vote_cast)
-					vote.addMember(fName, lName, party, state, 'Senate', lis_member_id, vote_cast)
+					
+					# TODO Find first names
+					# vote.addMember(fName, lName, party, state, 'House', lis_member_id, vote_cast)
+					vote.addMember('NA', lName, party, state, 'House', lis_member_id, vote_cast)
 				
 				# exiting loop since the only vote to be parsed has been parsed.
+				self.log("PrintingVote")
+				self.log(vote)
 				break
 
 	def getYeaNay(self, voteNum):
@@ -340,3 +348,6 @@ class house:
 		nays = totals.find('nay-total').text.strip()
 		return yeas, nays
 
+
+	def getFirstName(self):
+		pass

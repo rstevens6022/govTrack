@@ -220,7 +220,7 @@ class senate:
 		# self.log("type(congressCheck):: " + str(type(congressCheck)) + " type(self.congressNum)::" + str(type(self.congressNum)))
 
 
-		if congressCheck != self.congressNum:
+		if congressCheck != str(self.congressNum):
 			self.log("Warning: File is for congress " + congressCheck + " when requesting congress " + str(self.congressNum))
 			self.log("Exiting")
 			sys.exit()
@@ -231,10 +231,10 @@ class senate:
 		# self.log("type(sessionCheck):: " + str(type(sessionCheck)) + " type(self.congressSession)::" + str(type(self.congressSession)))
 
 
-		if sessionCheck != self.congressSession:
-			print("Warning: File is for congress " + sessionCheck + " when requesting congress " + str(self.congressSession))
+		if sessionCheck != str(self.congressSession):
+			print("Warning: File is for session " + sessionCheck + " when requesting session " + str(self.congressSession))
 			print("Exiting")
-			self.log("Warning: File is for congress " + sessionCheck + " when requesting congress " + str(self.congressSession))
+			self.log("Warning: File is for session " + sessionCheck + " when requesting session " + str(self.congressSession))
 			self.log("Exiting")
 			sys.exit()
 
@@ -377,9 +377,9 @@ class senate:
 	def parseVote(self, voteNum):
 		self.log("parsing vote " + str(voteNum))
 		print("parsing vote " + str(voteNum))
-		# looping through known list. usually would only loo at most recent part for updates which would be placed at the start of the voteList
+		# looping through known list. usually would only loop at most recent part for updates which would be placed at the start of the voteList
 		for vote in self.voteList:
-			if vote.vote_number == voteNum:
+			if str(vote.vote_number).lstrip('0') == str(voteNum).lstrip('0'):
 				try:
 					voteTree = ET.fromstring(self.pullVote(vote.vote_number))
 				except TypeError:
@@ -410,6 +410,8 @@ class senate:
 					state = member.find('state').text.strip()
 					vote_cast = member.find('vote_cast').text.strip()
 					lis_member_id = member.find('lis_member_id').text.strip()
+					# ---------------
+					# self.log("Printing Memberinfo for somebody")
 					# self.log(str(vote.vote_number) + "addMember:: " + fName + ", " + 
 					# 		lName + ", " + party + ", " + state + ", " + 'Senate' +
 					# 		 ", " + lis_member_id + ", " + vote_cast)
@@ -417,3 +419,6 @@ class senate:
 				
 				# exiting loop since the only vote to be parsed has been parsed.
 				break
+			# else:
+			# 	# was debugging
+			# 	print("vote.vote_number, "+ vote.vote_number + " != voteNum " + voteNum)
