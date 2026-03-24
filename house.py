@@ -278,7 +278,9 @@ class house:
 			result = voteItem[4]
 			# yeas and nays not reported in houseVoteSummary
 			# need to grab them from vote file
-			yeas, nays = self.getYeaNay(vote_number)
+			# if question.lower() != "Election of the Speaker".lower():
+			if "speaker" not in question.lower() and "election" not in question.lower():
+				yeas, nays = self.getYeaNay(vote_number)
 			title = voteItem[5]
 			self.log('appending vote '+ str(vote_number) + ' to voteList')
 			self.voteList.append(vote.vote(self.congressNum, self.congressSession, vote_number, vote_date, 
@@ -300,11 +302,33 @@ class house:
 					self.log("vote_number " + vote.vote_number + " not found.")
 
 					continue
+				except ET.ParseError:
+					print('WARNING:' + str(self.congressNum) + '-' + str(self.congressSession) + '-' + str(voteNum) + "had poorly formatted xml")
+					self.log('WARNING:' + str(self.congressNum) + '-' + str(self.congressSession) + '-' + str(voteNum) + "had poorly formatted xml")
+					voteTree = ET.fromstring(self.pullVote(vote.vote_number).strip('ï»¿'))
+					
 
 				# counts = voteTree.find('count')
 				counts = voteTree.find('vote-metadata').find('vote-totals').find('totals-by-vote')
 				# yeas = vote.find('yeas').text.strip()
 				# nays = vote.find('nays').text.strip()
+				
+				# -----------------
+				# If counts is none then the xml is either formatted wrong or the vote is odd(ex. 119-1v2 vote for speaker)
+				# The below if would end the parsing for either of these cases. Would be best to handle odd votes as they come, so that odd data, or format changes can be handled correctly.
+				# leaving the below (commented out) in case that the format didn't change since 1999.
+
+				# if counts is None:
+				# 	break
+				# ---------------------
+
+				if counts is None:
+					# if voteTree.find('vote-metadata').find('vote-question').text.strip().lower() == "Election of the Speaker".lower():
+					question = voteTree.find('vote-metadata').find('vote-question').text.strip().lower()
+					if "speaker" in question and "election" in question:
+						self.log('Skipping parse. Congress '+ str(self.congressNum) + ' session ' + str(self.congressSession) + ' vote ' + str(voteNum) + ' was for Election of the Speaker.')
+						break
+
 				try:
 					vote.present = counts.find('present-total').text.strip()
 				except AttributeError:
@@ -316,7 +340,7 @@ class house:
 					if type(counts.find('not-voting-total').text) == None:
 						vote.absent = "0"
 				members = voteTree.find('vote-data')
-				self.log("Grabbing Member data")
+				# self.log("Grabbing Member data")
 				for member in members.iter('recorded-vote'):
 					legislator = member.find('legislator')
 					lName = legislator.get('unaccented-name')
@@ -335,14 +359,20 @@ class house:
 					vote.addMember('NA', lName, party, state, 'House', lis_member_id, vote_cast)
 				
 				# exiting loop since the only vote to be parsed has been parsed.
-				self.log("PrintingVote")
+				# self.log("PrintingVote")
 				self.log(vote)
 				break
 
 	def getYeaNay(self, voteNum):
-		self.log('Getting yeas/nays for vote ' + str(voteNum))
-		print('Getting yeas/nays for vote ' + str(voteNum))
-		voteTree = ET.fromstring(self.pullVote(voteNum))
+		self.log('Getting yeas/nays for congress ' + str(self.congressNum) + ' session ' + str(self.congressSession) + ' vote ' + str(voteNum))
+		print('Getting yeas/nays for congress ' + str(self.congressNum) + ' session ' + str(self.congressSession) + ' vote ' + str(voteNum))
+		try:
+			voteTree = ET.fromstring(self.pullVote(voteNum))
+		except ET.ParseError:
+					print('WARNING:' + str(self.congressNum) + '-' + str(self.congressSession) + '-' + str(voteNum) + "had poorly formatted xml")
+					self.log('WARNING:' + str(self.congressNum) + '-' + str(self.congressSession) + '-' + str(voteNum) + "had poorly formatted xml")
+					voteTree = ET.fromstring(self.pullVote(voteNum).strip('ï»¿'))
+
 		totals = voteTree.find('vote-metadata').find('vote-totals').find('totals-by-vote')
 		yeas = totals.find('yea-total').text.strip()
 		nays = totals.find('nay-total').text.strip()
