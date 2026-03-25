@@ -3,7 +3,8 @@ import requests
 import re
 import xml.etree.ElementTree as ET
 import os
-import senateVote
+# import senateVote
+import vote as senateVote
 import time
 from datetime import datetime
 
@@ -360,7 +361,7 @@ class senate:
 
 
 			#Finally add vote to voteLst
-			self.voteList.append(senateVote.senateVote(self.congressNum, self.congressSession, vote_number, vote_date, 
+			self.voteList.append(senateVote.vote(self.congressNum, self.congressSession, vote_number, vote_date, 
 								issue.rstrip(', '), question.rstrip(', '), result.rstrip(', '), yeas, nays, title))	
 
 
