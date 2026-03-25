@@ -331,7 +331,7 @@ class senate:
 							result = "secret"
 							yeas = "-1"
 							nays = "-1"
-							# breaking here because I don't want to see mulitple secret votes en_bloc in parsed data
+							# breaking here because I don't want to see multiple secret votes en_bloc in parsed data
 							# would look like "secret, secret, secret, ..., secret, secret, secret, "
 							secret_flag = True
 							break
