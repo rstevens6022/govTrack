@@ -60,7 +60,7 @@ class senate:
 			# print("wait")
 			# self.log("wait")
 			time.sleep(2)
-		self.lastPullTime = now
+		self.lastPullTime = time.time()
 
 	def get_url(self):
 		return self.senate_votes_url

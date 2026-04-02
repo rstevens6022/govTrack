@@ -62,7 +62,7 @@ class house:
 			# print("wait")
 			# self.log("wait")
 			time.sleep(2)
-		self.lastPullTime = now
+		self.lastPullTime = time.time()
 
 	def getYear(self, congressNum, congressSession):
 		return (2 * (int(congressNum)-100) + 1987 + int(congressSession) -1)
