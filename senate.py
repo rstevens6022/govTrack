@@ -304,8 +304,8 @@ class senate:
 				# Need to handle b/c data is missing and not being pulled.
 				#
 				# print('vote was en_bloc')
-				self.log("Warning: Congress " + str(self.congressNum) + " Session " +str(self.congressSession) + " Vote " + str(vote_number) +" is an En Bloc vote")
 				vote_number = vote.find('vote_number').text.strip()
+				self.log("Warning: Congress " + str(self.congressNum) + " Session " +str(self.congressSession) + " Vote " + str(vote_number) +" is an En Bloc vote")
 				print("adding vote_number " + str(vote_number) + " into voteList")
 				self.log("adding vote_number " + str(vote_number) + " into voteList")
 				vote_date = vote.find('vote_date').text.strip()
